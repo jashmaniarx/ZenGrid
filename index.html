@@ -1,21 +1,322 @@
-<link href="https://fonts.googleapis.com/css2?family=Lexend&display=swap" rel="stylesheet" />
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Grid UI</title>
 
-<div id="background"></div>
+    <!-- Lexend Font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lexend&display=swap"
+      rel="stylesheet"
+    />
 
-<div class="controls">
-  <label>
-    Grid size: 
-    <input id="gridSize" type="number" min="3" max="5" value="5" />
-  </label>
+    <style>
+      :root {
+  --bg-color: #f9f9f9;
+  --tile-bg: #ddd;
+  --text-color: #333;
+}
 
-  <button id="randomize">Randomize</button>
+body {
+  font-family: 'Lexend', sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  margin: 40px 20px;
+  user-select: none;
+  overflow-x: hidden;
+}
 
-  <button id="darkModeToggle">Dark Mode</button>
+body.dark-mode {
+  --bg-color: #121212;
+  --tile-bg: #333;
+  --text-color: #eee;
+}
 
-  <label>
-    Add color: 
-    <input type="color" id="colorPicker" value="#5a9bf6" />
-  </label>
-</div>
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 25px;
+  align-items: center;
+}
 
-<div id="grid"></div>
+label {
+  font-size: 1.1rem;
+  color: var(--text-color);
+  user-select: none;
+}
+
+input[type="number"] {
+  width: 60px;
+  padding: 6px 8px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1.5px solid #aaa;
+  text-align: center;
+  margin-left: 8px;
+  outline-offset: 2px;
+  transition: border-color 0.3s;
+  background: white;
+  color: black;
+}
+
+body.dark-mode input[type="number"] {
+  background: #555;
+  color: white;
+  border-color: #888;
+}
+
+input[type="number"]:focus {
+  border-color: #5a9bf6;
+  outline: none;
+}
+
+input[type="color"] {
+  margin-left: 8px;
+  cursor: pointer;
+  border: none;
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  background: none;
+}
+
+button {
+  font-family: 'Lexend', sans-serif;
+  background-color: #5a9bf6;
+  border: none;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgb(90 155 246 / 0.35);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  user-select: none;
+}
+
+button:hover,
+button:focus {
+  background-color: #4178d8;
+  box-shadow: 0 6px 12px rgb(65 120 216 / 0.5);
+  outline: none;
+}
+
+#grid {
+  display: grid;
+  grid-gap: 10px;
+  justify-content: center;
+  margin: 0 auto;
+  user-select: none;
+}
+
+.tile {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  background: var(--tile-bg);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.ripple {
+  position: absolute;
+  width: 40px;       /* smaller size */
+  height: 40px;      /* smaller size */
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ripple-effect 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple-effect {
+  to {
+    transform: scale(3);  /* smaller scale */
+    opacity: 0;
+  }
+}
+
+
+/* Animated Background */
+
+#background {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle at center, #a0c4ff 20%, transparent 70%);
+  animation: pulse 10s ease-in-out infinite;
+  opacity: 0.3;
+}
+
+body.dark-mode #background {
+  background: radial-gradient(circle at center, #5555aa 20%, transparent 70%);
+  opacity: 0.15;
+}
+
+@keyframes pulse {
+  0%, 100% {opacity: 0.3;}
+  50% {opacity: 0.6;}
+}
+
+    </style>
+  </head>
+
+  <body>
+    <!-- Background -->
+    <div id="background"></div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <label for="gridSize">
+        Grid size:
+        <input id="gridSize" type="number" min="3" max="5" value="5" />
+      </label>
+
+      <button id="randomize">Randomize</button>
+      <button id="darkModeToggle">Dark Mode</button>
+
+      <label for="colorPicker">
+        Add color:
+        <input type="color" id="colorPicker" value="#5a9bf6" />
+      </label>
+    </div>
+
+    <!-- Grid container -->
+    <div id="grid"></div>
+
+    <script>
+      const grid = document.getElementById('grid');
+const gridSizeInput = document.getElementById('gridSize');
+const randomizeBtn = document.getElementById('randomize');
+const darkModeBtn = document.getElementById('darkModeToggle');
+const colorPicker = document.getElementById('colorPicker');
+
+let colors = ['#ddd', '#5a9bf6', '#f67e5a', '#5af69b'];
+let mouseDown = false;
+let tiles = [];
+
+document.body.onmousedown = () => {
+  mouseDown = true;
+  document.body.style.overflow = 'hidden'; // prevent scroll during drag
+};
+
+document.body.onmouseup = () => {
+  mouseDown = false;
+  document.body.style.overflow = 'auto'; // re-enable scroll
+};
+
+function createGrid(size) {
+  if (size < 3) size = 3;
+  if (size > 5) size = 5;
+  gridSizeInput.value = size;
+
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${size}, 60px)`;
+  tiles = [];
+
+  for (let i = 0; i < size * size; i++) {
+    const tile = document.createElement('div');
+    tile.classList.add('tile');
+    tile.dataset.colorIndex = 0;
+    tile.style.backgroundColor = colors[0];
+
+    tile.addEventListener('click', e => {
+      cycleColor(tile);
+      createRipple(tile, e);
+    });
+
+    tile.addEventListener('mouseover', () => {
+      if (mouseDown) {
+        cycleColor(tile);
+        createRipple(tile);
+      }
+    });
+
+    tiles.push(tile);
+    grid.appendChild(tile);
+  }
+}
+
+function cycleColor(tile) {
+  let idx = Number(tile.dataset.colorIndex);
+  idx = (idx + 1) % colors.length;
+  tile.dataset.colorIndex = idx;
+  tile.style.backgroundColor = colors[idx];
+  tile.style.transform = 'scale(1.1)';
+  setTimeout(() => (tile.style.transform = 'scale(1)'), 150);
+}
+
+function createRipple(tile, event) {
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  tile.appendChild(ripple);
+
+  const rect = tile.getBoundingClientRect();
+  const x = event ? event.clientX - rect.left : rect.width / 2;
+  const y = event ? event.clientY - rect.top : rect.height / 2;
+
+  ripple.style.left = `${x}px`;
+  ripple.style.top = `${y}px`;
+
+  setTimeout(() => ripple.remove(), 600);
+}
+
+randomizeBtn.addEventListener('click', () => {
+  tiles.forEach(tile => {
+    let randIdx = Math.floor(Math.random() * colors.length);
+    tile.dataset.colorIndex = randIdx;
+    tile.style.backgroundColor = colors[randIdx];
+  });
+});
+
+darkModeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+});
+
+colorPicker.addEventListener('change', () => {
+  const newColor = colorPicker.value;
+  if (!colors.includes(newColor)) {
+    colors.push(newColor);
+  }
+});
+
+// Multi-touch support
+
+grid.addEventListener('touchstart', e => {
+  e.preventDefault();
+  [...e.touches].forEach(touch => toggleTileAtTouch(touch));
+});
+
+grid.addEventListener('touchmove', e => {
+  e.preventDefault();
+  [...e.touches].forEach(touch => toggleTileAtTouch(touch));
+});
+
+function toggleTileAtTouch(touch) {
+  const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (elem && elem.classList.contains('tile')) {
+    cycleColor(elem);
+    createRipple(elem);
+  }
+}
+
+// Grid size input change
+
+gridSizeInput.addEventListener('input', () => {
+  let size = parseInt(gridSizeInput.value);
+  if (isNaN(size)) size = 5;
+  createGrid(size);
+});
+
+// Initialize
+
+createGrid(parseInt(gridSizeInput.value));
+    </script>
+  </body>
+</html>
